@@ -1,15 +1,15 @@
 # ig-link-bili
 
-> 把你给的 Instagram Reel 链接，自动下载、翻译标题简介、转载到 B 站。
+> 把你给的 Instagram Reel 链接，自动下载、翻译、转载到 B 站。
 
-一个 Claude / agent **skill**（同时也是一套可独立运行的脚本）。你扔一条 `instagram.com/reel/<code>/` 链接并说"转到 B 站"，它就完成 **下载 → 翻译文案 → 上传 → 验真** 全流程。
+一个 Claude / agent **skill**。你只管把 IG 链接丢给 agent、说一句"转到 B 站"——**装依赖、刷 cookie、下载、翻译、上传、验真，全部由 agent 自动完成**。
 
 **它做什么**
 
 - 解析单条（或一批）IG Reel/Post 链接
-- 用 `yt-dlp` 公开下载视频 + 封面 + 元数据（**无需 Instagram 账号**）
-- 把外文标题/简介翻成中文（由 agent 完成）
-- 上传到 B 站，并在视频里填好原作者归属
+- 公开下载视频 + 封面 + 元数据（`yt-dlp`，**无需 Instagram 账号**）
+- 把外文标题/简介翻成中文
+- 上传到 B 站，填好原作者归属
 - 上传后调 B 站 API **验真**（接口异步，返 success ≠ 真成功）
 
 **它不做什么**（核心设计取舍）
@@ -17,55 +17,58 @@
 - ❌ 不自动抓 IG feed / hashtag —— 链接都是你主动给的
 - ❌ 不做点赞阈值筛选、不做去重、不做作者黑名单
 
-链接是你给的，过滤掉反而是 surprise。需要自动抓取请用别的工具。
-
 ---
 
-## 环境要求
+## 快速开始
 
-| 依赖 | 用途 | 安装 |
-|---|---|---|
-| Python 3.8+ | 跑脚本 | 系统自带 |
-| `yt-dlp` | 公开下载 IG Reel | `brew install yt-dlp` / `pip install yt-dlp` |
-| `ffmpeg` | 截帧兜底封面 | `brew install ffmpeg` / `apt install ffmpeg` |
-| pip 依赖 | B 站上传库 | `pip install -r bilibili_uploader/requirements.txt` |
-| `browser_cookie3` | 从浏览器抓 B 站 cookie | `pip install browser_cookie3` |
-| 一个 B 站账号 | 上传用（你自己的） | 在浏览器登录 bilibili.com |
+你只需要做几件 agent 替不了的小事，其余全部交给它。
 
----
+### ① 让 agent 拿到这个 skill
 
-## 安装
+把本仓库放进你 agent 的 skills 目录，或者直接对 agent 说：
 
-```bash
-# 1) 获取代码
-git clone https://github.com/ArvinYin1/ig-link-bili-skill.git
-cd ig-link-bili-skill
-
-# 2) 装依赖
-pip install -r bilibili_uploader/requirements.txt browser_cookie3 yt-dlp
-brew install yt-dlp ffmpeg          # macOS（Linux 用 apt/yum 装 yt-dlp + ffmpeg）
-
-# 3) 刷 B 站 cookie（首次必做）—— 仓库里不含真 cookie，只有占位模板
-#    先在任意浏览器登录 bilibili.com（chrome/edge/brave/arc/vivaldi/firefox/safari 都行），再跑：
-python3 scripts/setup_cookies.py            # 自动探测已登录 B 站的浏览器
-# 或指定：python3 scripts/setup_cookies.py --browser firefox
-# 看到 "✓ 成功！...isLogin=True, @你的用户名" 即配置完成。cookie 过期了重跑同一条命令。
+```
+把这个 skill 装好：https://github.com/ArvinYin1/ig-link-bili-skill
 ```
 
-> **作为 Claude / agent skill 使用**：把整个目录放进你 agent 的 skills 目录，agent 会通过 `SKILL.md` 的
-> 描述自动识别——当你发来 IG 链接并表达"转载到 B 站"时触发。仍需先完成上面第 2、3 步（装依赖 + 刷 cookie）。
+agent 会克隆代码、**自动装好所有依赖**（Python 包 / `yt-dlp` / `ffmpeg`），并通过 `SKILL.md` 识别这个 skill。
+
+### ② 在浏览器登录 bilibili.com
+
+agent **不能替你登录账号**——请自己在某个浏览器（Chrome / Edge / Brave / Arc / Firefox / Safari 都行）登录好你的 B 站。
+
+### ③ 直接对 agent 说话
+
+```
+把这条转到 B 站：https://www.instagram.com/reel/DYyvKNpEdoo/
+```
+
+**首次运行**时，agent 会自动跑 `setup_cookies.py` 从你浏览器把 B 站登录态读出来。整个过程**唯一需要你动手的瞬间**：macOS 上若用 Chrome 等 Chromium 系浏览器，系统会弹一次钥匙串密码框，点"允许"即可（用 Firefox 则不弹）。之后就等 agent 回结果。
 
 ---
 
-## 使用
+## 谁做什么
 
-装好依赖、刷过 cookie 之后，**你不用记任何命令**——直接把 IG 链接发给 agent，并说一句"转到 B 站"即可。
+| 事项 | 谁来做 |
+|---|---|
+| 装 Python 依赖 / `yt-dlp` / `ffmpeg` | 🤖 agent |
+| 刷 B 站 cookie（跑 `setup_cookies.py`） | 🤖 agent |
+| 下载视频、翻译文案、上传、验真 | 🤖 agent |
+| cookie 过期后重刷（你说一句"cookie 过期了重刷下"） | 🤖 agent |
+| **在浏览器登录 B 站账号** | 🧑 **你**（agent 没有你的账号密码） |
+| **批准 macOS 钥匙串弹窗**（仅 Chromium 系 + 首次） | 🧑 **你**（原生安全弹窗，agent 点不了） |
 
-**怎么跟 agent 说**（举例）：
+---
+
+## 怎么跟 agent 说（触发）
+
+单条：
 
 ```
 把这条转载到 B 站：https://www.instagram.com/reel/DYyvKNpEdoo/
 ```
+
+多条（会串行处理、彼此间隔，一条失败不影响其他）：
 
 ```
 这几条 IG Reel 都搬到 B 站：
@@ -73,43 +76,15 @@ https://www.instagram.com/reel/DYyvKNpEdoo/
 https://www.instagram.com/reel/Cabc123dEfg/
 ```
 
-**触发条件**：消息里 ① 含 `instagram.com` 链接（`/reel/`、`/p/`、`/tv/`），**且** ② 表达了"转载 / 搬运 / 上传 / 转到 B 站"的意图。只是分享链接、问内容是什么，**不会**触发。
+**触发条件**：消息里 ① 含 `instagram.com` 链接（`/reel/`、`/p/`、`/tv/`），**且** ② 表达"转载 / 搬运 / 上传 / 转到 B 站"的意图。只是分享链接、问内容是什么，**不会**触发。
 
-**agent 收到后自动做的事**（你只需等结果）：
+**agent 收到后自动做的事**（你只需等结果）：下载 → 翻译标题简介 → 上传（填好原作者归属）→ 等 1-2 分钟验真 → 回给你 B 站视频地址 `https://www.bilibili.com/video/<bvid>`。
 
-1. 下载视频 + 封面 + 元数据（`yt-dlp`，公开下载，无需 IG 账号）
-2. 把外文标题/简介翻成中文
-3. 上传到 B 站，填好原作者归属
-4. 等 1-2 分钟调 API 验真（接口异步，确保真成功）
-5. 回给你 B 站视频地址：`https://www.bilibili.com/video/<bvid>`
+---
 
-多条链接会串行处理、彼此间隔，一条失败不影响其他，最后汇总。
+## 自定义编辑风格
 
-**自定义编辑风格**：标题前缀（默认 `【动态参考】`）、tags、分区（`category`）、描述模板都在
-[`scripts/upload_one.py`](./scripts/upload_one.py) 里改。默认**不会**把视频加入任何合集。
-
-<details>
-<summary>手动运行（不通过 agent，调试用）</summary>
-
-以 shortcode `DYyvKNpEdoo`（取自 `instagram.com/reel/DYyvKNpEdoo/`）为例：
-
-```bash
-# 1) 下载视频 + 封面 + 元数据
-./scripts/prepare_media.sh DYyvKNpEdoo
-#    产出 /tmp/ig_link_bili/DYyvKNpEdoo.{mp4,info.json,thumb.jpg}
-
-# 2) 读元数据里的 description，自己翻成中文标题 + 描述
-cat /tmp/ig_link_bili/DYyvKNpEdoo.info.json
-
-# 3) 上传到 B 站
-python3 ./scripts/upload_one.py DYyvKNpEdoo "<中文标题>" "<中文描述>" "<原作者用户名>"
-
-# 4) 等 1-2 分钟验真
-sleep 60 && python3 ./scripts/verify_upload.py <上一步的 bvid>
-```
-</details>
-
-完整工作流、多链接处理、边界情况见 [SKILL.md](./SKILL.md)。
+标题前缀（默认 `【动态参考】`）、tags、分区（`category`）、描述模板都在 [`scripts/upload_one.py`](./scripts/upload_one.py) 里改。默认**不会**把视频加入任何合集。
 
 ---
 
@@ -120,7 +95,7 @@ ig-link-bili-skill/
 ├── SKILL.md                       # agent 视角的完整工作流与规则
 ├── README.md                      # 本文件
 ├── scripts/
-│   ├── setup_cookies.py           # 首次必跑：从本机浏览器抓 B 站 cookie（多浏览器，自动验真）
+│   ├── setup_cookies.py           # 从本机浏览器抓 B 站 cookie（多浏览器，自动验真）
 │   ├── prepare_media.sh           # 下载 mp4 + 截/拉封面 + 拉元数据
 │   ├── upload_one.py              # 单条上传 B 站
 │   └── verify_upload.py           # B 站 API 验真（带重试）
@@ -139,20 +114,32 @@ ig-link-bili-skill/
 
 ## 排错
 
-最常见问题：`upload_one.py` 抛 `Expecting value: line 1 column 1` —— **几乎一定是本机 cookie 失效**（不是 B 站挂了）。先重刷：
+绝大多数失败是 **B 站 cookie 失效**（agent 会看到 `Expecting value: line 1 column 1`）。这时对 agent 说一句即可：
 
-```bash
-python3 scripts/setup_cookies.py
+```
+B 站 cookie 好像过期了，帮我重刷一下
 ```
 
-30 秒判定登录态：
+agent 会重跑 `setup_cookies.py`（你可能要再点一次钥匙串）。技术细节、cookie 三件套必须同源、preupload 403 决策树等，见 [`references/pitfalls.md`](./references/pitfalls.md)。
+
+<details>
+<summary>手动安装 / 运行（不通过 agent，开发调试用）</summary>
 
 ```bash
-SESSDATA=$(python3 -c "import json,pathlib; print(json.loads(pathlib.Path('bilibili_uploader/credentials.json').read_text())['sessdata'])")
-curl -sS "https://api.bilibili.com/x/web-interface/nav" -b "SESSDATA=$SESSDATA" | python3 -c "import json,sys; print('isLogin:', json.load(sys.stdin)['data']['isLogin'])"
+# 安装
+git clone https://github.com/ArvinYin1/ig-link-bili-skill.git && cd ig-link-bili-skill
+pip install -r bilibili_uploader/requirements.txt browser_cookie3 yt-dlp
+brew install yt-dlp ffmpeg                       # Linux 用 apt/yum
+python3 scripts/setup_cookies.py                 # 先在浏览器登录 bilibili.com；或 --browser firefox
+
+# 跑一条（shortcode 取自 instagram.com/reel/DYyvKNpEdoo/）
+./scripts/prepare_media.sh DYyvKNpEdoo                                   # 下载 + 封面 + 元数据
+python3 ./scripts/upload_one.py DYyvKNpEdoo "<中文标题>" "<中文描述>" "<原作者>"   # 上传
+sleep 60 && python3 ./scripts/verify_upload.py <bvid>                    # 验真
 ```
 
-更多坑（cookie 三件套必须同源、preupload 403 决策树等）见 [`references/pitfalls.md`](./references/pitfalls.md)。
+完整工作流见 [SKILL.md](./SKILL.md)。
+</details>
 
 ---
 
@@ -160,8 +147,8 @@ curl -sS "https://api.bilibili.com/x/web-interface/nav" -b "SESSDATA=$SESSDATA" 
 
 - **版权与合规自负**：本工具会把**他人的** Instagram 内容转到 B 站。是否有权转载、B 站转载规则、原作者授权，**由使用者自行负责**。脚本会自动填 `source` 原作者归属，但这不替代取得授权。
 - **用你自己的 B 站账号，风险自担**：短时间大量转载可能触发 B 站风控/处罚。脚本已串行 + 间隔上传，但账号后果由你承担。
-- **cookie 是你本机 / 本账号专属**：`setup_cookies.py` 读取你本机浏览器的 B 站登录态（macOS 上 Chromium 系会弹一次钥匙串）。**绝不要**把生成的 `credentials.json` 拷给别人——B 站按设备指纹绑会话，拷出去既无效也泄露你的账号。
-- **依赖外部站点**：`yt-dlp` 下载依赖 Instagram 页面结构，IG 改版时可能需要 `pip install -U yt-dlp`。
+- **cookie 是你本机 / 本账号专属**：`setup_cookies.py` 读取你本机浏览器的 B 站登录态。**绝不要**把生成的 `credentials.json` 拷给别人——B 站按设备指纹绑会话，拷出去既无效也泄露你的账号。
+- **依赖外部站点**：`yt-dlp` 下载依赖 Instagram 页面结构，IG 改版时可能需要更新（`pip install -U yt-dlp`，也可让 agent 代劳）。
 
 ---
 
