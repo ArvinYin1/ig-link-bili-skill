@@ -4,6 +4,15 @@
 
 一个 Claude / agent **skill**。你只管把 IG 链接丢给 agent、说一句"转到 B 站"——**装依赖、刷 cookie、下载、翻译、上传、验真，全部由 agent 自动完成**。
 
+> [!IMPORTANT]
+> ## 🧑 你只需亲自做这 2 件事
+> agent 替你包办其余一切，但下面两件**它做不了，必须你来**：
+>
+> 1. **在浏览器登录你的 B 站账号** —— agent 没有你的账号密码，登不进去。
+> 2. **首次刷 cookie 时，在 macOS 弹出的钥匙串密码框点「允许」** —— 这是系统原生安全弹窗，agent 点不了。（用 Firefox / LibreWolf 则**不会**弹这个框。）
+>
+> 就这两件。其余（装依赖、刷 cookie、下载、翻译、上传、验真）你都不用管。
+
 **它做什么**
 
 - 解析单条（或一批）IG Reel/Post 链接
@@ -43,7 +52,10 @@ agent **不能替你登录账号**——请自己在某个浏览器（Chrome / E
 把这条转到 B 站：https://www.instagram.com/reel/DYyvKNpEdoo/
 ```
 
-**首次运行**时，agent 会自动跑 `setup_cookies.py` 从你浏览器把 B 站登录态读出来。整个过程**唯一需要你动手的瞬间**：macOS 上若用 Chrome 等 Chromium 系浏览器，系统会弹一次钥匙串密码框，点"允许"即可（用 Firefox 则不弹）。之后就等 agent 回结果。
+**首次运行**时，agent 会自动跑 `setup_cookies.py` 从你浏览器把 B 站登录态读出来，之后你就等结果。
+
+> [!WARNING]
+> 🧑 **唯一需要你动手的瞬间**：macOS 上若用 Chrome 等 Chromium 系浏览器，系统会弹一次**钥匙串密码框**——点「允许」即可。这是原生安全弹窗，agent 替你点不了。（用 Firefox / LibreWolf 不弹。）
 
 ---
 
