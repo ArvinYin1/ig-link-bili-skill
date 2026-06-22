@@ -1,7 +1,7 @@
 ---
 name: IG link to Bili
 description: 把 Instagram Reel 链接（用户提供）下载、翻译、转载到 B 站。**不做** IG feed/hashtag 自动抓取、**不做**点赞阈值筛选、**不做**去重、**不做**作者黑名单——链接都是用户主动给的，过滤掉反而是 surprise。当用户提供 instagram.com/reel/<code>/ 或 /p/<code>/ 链接并希望转载/搬运/上传到 B 站时激活。
-version: 1.4.0
+version: 1.5.0
 author: Taozi (Arvin Yin)
 tags: [instagram, bilibili, motion-design, video, repost, single-link]
 ---
@@ -12,9 +12,10 @@ tags: [instagram, bilibili, motion-design, video, repost, single-link]
 
 **核心约束**：链接都是用户主动给的——**不做抓取/筛选/去重/黑名单**。
 
-> **可配置项（编辑风格，按你的频道改）**：标题前缀 `【动态参考】`、tags、分区 `category="171"`、描述模板，
-> 都在 [`scripts/upload_one.py`](./scripts/upload_one.py)（`title`/`tags`/`category`/`description` 处）。
-> v1.4.0 起**不再自动加入任何合集**——需要的话上传后自己在 B 站创作中心加。
+> **编辑风格不写死**（v1.5.0）：标题、描述、分区（category）、标签（tags）都**不固定**——
+> 默认由 agent 按视频内容 + 用户意图临时决定，通过命令行参数传给 `upload_one.py`。
+> 想给固定频道设默认的，复制 [`config.example.json`](./config.example.json) 为 `config.json` 填一次即可
+> （解析优先级：命令行 > config.json > 兜底）。**不自动加入任何合集**。
 
 > ⚠️ **撞墙时**——先读 [`references/diagnosis-methodology.md`](./references/diagnosis-methodology.md)，**再**读 [`references/pitfalls.md`](./references/pitfalls.md)。元归因纪律（裸 curl 验证 ≠ 真实请求形态）比单条 pitfall 更重要。
 
@@ -57,16 +58,18 @@ tags: [instagram, bilibili, motion-design, video, repost, single-link]
    ./scripts/prepare_media.sh <shortcode> [/tmp/ig_link_bili]
    ```
    → 产出 `<shortcode>.mp4` + `<shortcode>.info.json`（含 uploader/like_count/description）+ `<shortcode>thumb.jpg`
-3. **翻译 caption**（agent 脑内）——元数据 JSON 里的 `description` 字段，非中文就翻成中文：
-   - 标题：`【动态参考】<中文标题>`（前缀脚本会兜底补）
-   - 描述：`转载来源：Instagram - 原作者：@<uploader>\n\n<1-2 句中文概述>\n\n—— 原简介 ——\n<原文>`
-   - **不要在简介里写原视频链接**（Arvin 偏好）
-   - 保留 studio 名 / 软件名 / 行业英文术语不译
+3. **生成标题/描述/分区/标签**（agent 脑内，按内容 + 用户意图，不写死）：
+   - **标题**：把 caption 译成中文标题。**前缀不强制**——若用户/`config.json` 指定了固定前缀就用，否则不加。
+   - **描述**：建议格式 `转载来源：Instagram - 原作者：@<uploader>\n\n<1-2 句中文概述>\n\n—— 原简介 ——\n<原文>`；**不要在简介里写原视频链接**；保留 studio 名 / 软件名 / 行业英文术语不译。
+   - **分区 category（必填）**：按视频内容选合适的 B 站分区 TID（如动画/创意/科技等，**别用游戏默认区**）。不确定就问用户，或读 `config.json`。
+   - **标签 tags**：按内容取 3-8 个相关标签；或读 `config.json`。
+   - 非中文 caption 才翻译；本身是中文直接用。
 4. **上传 B 站**：
    ```bash
-   python3 ./scripts/upload_one.py <shortcode> <title> <description> <uploader>
+   python3 ./scripts/upload_one.py <shortcode> "<标题>" "<描述>" --category <TID> --tags 标签1,标签2
    ```
-   → 返回 JSON 含 `bvid` + `aid`
+   - `--category` 必填（命令行或 `config.json` 二选一）；`--tags` 可选；来源默认自动用该 Reel 的 IG 链接
+   - → 返回 JSON 含 `bvid` + `aid`
 5. **验真**（**必做，**B 站接口异步——`upload_one.py` 返 success 不代表真成功）：
    ```bash
    sleep 60
@@ -85,20 +88,20 @@ tags: [instagram, bilibili, motion-design, video, repost, single-link]
 ```
 ig-link-bili/
 ├── SKILL.md                      ← 你正在看的
+├── config.example.json           ← 可选配置模板（复制为 config.json 设固定的分区/标签/标题前缀）
 ├── scripts/
 │   ├── setup_cookies.py          ← 首次必跑：从本机浏览器抓 B 站 cookie 写入 credentials.json（支持多浏览器，自动验真）
 │   ├── prepare_media.sh          ← 一步：下载 mp4 + 截封面 + 拉元数据 JSON
-│   ├── upload_one.py             ← 单条上传 wrapper（自动注入 PYTHONPATH）
+│   ├── upload_one.py             ← 单条上传 wrapper（分区/标签走参数或 config.json，不写死）
 │   └── verify_upload.py          ← B 站 API 验真（带重试）
 ├── bilibili_uploader/            ← 自包含 B 站上传库（拷自 wscats/bilibili-all-in-one）
 │   ├── main.py
 │   ├── src/
-│   ├── credentials.json          ← 你的 B 站 cookie（自带，**SESSDATA 是空**——见 pitfalls §9）
-│   ├── credentials.json.template ← 模板
+│   ├── credentials.json.template ← cookie 模板（真 credentials.json 由 setup_cookies.py 生成，已 .gitignore）
 │   └── requirements.txt
 ├── examples/                     ← 几个测试链接
 └── references/                   ← 已知坑、失败案例
-    ├── pitfalls.md               ← 9 节：cookie 三件套、preupload 403 决策树等
+    ├── pitfalls.md               ← cookie 三件套、preupload 403 决策树等
     └── upload-verification.md
 ```
 

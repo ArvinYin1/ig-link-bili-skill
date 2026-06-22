@@ -3,28 +3,35 @@
 ig-link-bili: 单条 IG Reel → B 站上传 wrapper
 
 用法：
-  python3 upload_one.py <shortcode> <title> <description> <uploader>
+  python3 upload_one.py <shortcode> <title> <description> [选项]
 
-参数：
-  shortcode   Instagram Reel 短码（11 位）
-  title       中文标题（脚本会自动补【动态参考】前缀）
-  description 中文描述（保留 "—— 原简介 ——" 段落；不要写原视频链接）
-  uploader    Instagram 用户名（无 @）
+位置参数：
+  shortcode    Instagram Reel 短码（如 DYyvKNpEdoo）
+  title        中文标题（agent 生成；不含任何写死前缀）
+  description  中文描述（保留 "—— 原简介 ——" 段落；不要写原视频链接）
+
+选项（编辑风格——按你的频道/内容定，不写死）：
+  --category TID   B 站分区 TID（必填：命令行或 config.json 二选一提供）
+  --tags  a,b,c    标签，逗号分隔（默认读 config.json，再不行用 B 站默认）
+  --source URL     转载来源（默认自动用该 Reel 的 IG 链接）
+
+可选配置文件 config.json（放在 skill 根目录，见 config.example.json）：
+  { "title_prefix": "", "category": "", "tags": [] }
+  解析优先级：命令行参数 > config.json > 兜底。
+  title_prefix 非空且标题没带它时，自动加在标题前（给固定频道用）。
 
 前置：
-  - /tmp/ig_link_bili/<shortcode>.mp4         (yt-dlp 下载好的视频)
-  - /tmp/ig_link_bili/<shortcode>thumb.jpg     (ffmpeg 截帧兜底封面)
-  - ../../bilibili_uploader/credentials.json   (B 站 cookie，自带)
+  - <media_dir>/<shortcode>.mp4         (prepare_media.sh 下载好的视频)
+  - <media_dir>/<shortcode>thumb.jpg    (封面；缺失则 B 站自动生成)
+    media_dir 默认 /tmp/ig_link_bili，可用环境变量 IG_MEDIA_DIR 改
+  - bilibili_uploader/credentials.json  (B 站 cookie，由 setup_cookies.py 生成)
 
 返回：
-  stdout JSON: {success, bvid, aid, message, ...}
-  非 0 退出码 = 上传失败
+  stdout JSON: {success, bvid, aid, message, ...}；非 0 退出码 = 上传失败
 
-不依赖任何其他 skill 路径。
-
-实现说明：内部生成一个临时 .py 脚本调用 bilibili_uploader.publisher，
-然后删除。避免 python3 -c "..." 被 Hermes Tirith 扫描拦截。
+实现说明：内部生成一个临时 .py 脚本调用 bilibili_uploader.publisher，然后删除。
 """
+import argparse
 import json
 import os
 import subprocess
@@ -35,32 +42,72 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).parent.resolve()
 SKILL_DIR = SCRIPT_DIR.parent
 UPLOADER_DIR = SKILL_DIR / "bilibili_uploader"
+CONFIG_PATH = SKILL_DIR / "config.json"
 
 # 视频/封面路径
 MEDIA_DIR = Path(os.environ.get("IG_MEDIA_DIR", "/tmp/ig_link_bili"))
 
 
-def usage_and_exit():
-    print(__doc__)
-    sys.exit(1)
+def load_config():
+    """读取可选的 config.json（用户固定偏好）；不存在就返回空 dict。"""
+    if CONFIG_PATH.exists():
+        try:
+            return json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError) as e:
+            print(json.dumps({"success": False, "error": f"config.json 解析失败: {e}"}, ensure_ascii=False))
+            sys.exit(2)
+    return {}
+
+
+def fail(msg, code=2):
+    print(json.dumps({"success": False, "error": msg}, ensure_ascii=False))
+    sys.exit(code)
 
 
 def main():
-    if len(sys.argv) != 5:
-        usage_and_exit()
+    ap = argparse.ArgumentParser(add_help=True, description="单条 IG Reel 上传到 B 站")
+    ap.add_argument("shortcode")
+    ap.add_argument("title")
+    ap.add_argument("description")
+    ap.add_argument("--category", help="B 站分区 TID（命令行或 config.json 必须提供其一）")
+    ap.add_argument("--tags", help="标签，逗号分隔")
+    ap.add_argument("--source", help="转载来源 URL（默认用该 Reel 的 IG 链接）")
+    args = ap.parse_args()
 
-    shortcode = sys.argv[1]
-    title = sys.argv[2]
-    description = sys.argv[3]
-    uploader = sys.argv[4]
+    cfg = load_config()
+    shortcode = args.shortcode
 
+    # --- 标题：可选前缀（仅 config.json 提供时生效，给固定频道用）---
+    title = args.title
+    prefix = cfg.get("title_prefix", "")
+    if prefix and not title.startswith(prefix):
+        title = prefix + title
+
+    # --- 分区：命令行 > config > 报错（绝不默默猜，避免进错区）---
+    category = args.category or cfg.get("category")
+    if not category:
+        fail("未指定 B 站分区。请用 --category <TID>，或在 config.json 设置 category。"
+             "（按视频内容选分区；创意/动画类内容不要用游戏默认区。）")
+    category = str(category)
+
+    # --- 标签：命令行 > config > 空（交给 B 站默认）---
+    if args.tags:
+        tags = [t.strip() for t in args.tags.split(",") if t.strip()]
+    elif cfg.get("tags"):
+        tags = list(cfg["tags"])
+    else:
+        tags = []
+
+    # --- 来源：命令行 > 默认用 IG 链接 ---
+    source = args.source or f"https://www.instagram.com/reel/{shortcode}/"
+
+    description = args.description
     video_path = MEDIA_DIR / f"{shortcode}.mp4"
     cover_path = MEDIA_DIR / f"{shortcode}thumb.jpg"
     if not video_path.exists():
-        print(json.dumps({"success": False, "error": f"video not found: {video_path}"}, ensure_ascii=False))
-        sys.exit(2)
+        fail(f"video not found: {video_path}（先跑 prepare_media.sh）")
 
-    # 把参数落到临时 .py 脚本（避免 -c 触发安全扫描）
+    # 把参数落到临时 .py 脚本
     cred_file = str(UPLOADER_DIR / "credentials.json")
     helper_code = f'''#!/usr/bin/env python3
 import sys, json, asyncio
@@ -76,11 +123,11 @@ async def main():
             file_path={str(video_path)!r},
             title={title!r},
             description={description!r},
-            tags=["动态设计", "motion design", "动画", "设计", "创意"],
-            category="171",
+            tags={tags!r},
+            category={category!r},
             cover_path={str(cover_path)!r},
             no_reprint=0,
-            source="https://www.instagram.com/reel/{shortcode}/",
+            source={source!r},
         )
         print("IGLINK_RESULT=" + json.dumps(result, ensure_ascii=False))
     except Exception as e:

@@ -3,6 +3,9 @@ bilibili_uploader/credentials.json
 .credentials.json
 credentials.json
 
+# === 用户个人配置（只提交 config.example.json）===
+config.json
+
 # === 下载的媒体（运行时产物，默认在 /tmp，但以防改了输出目录）===
 *.mp4
 *.mkv

@@ -94,9 +94,14 @@ https://www.instagram.com/reel/Cabc123dEfg/
 
 ---
 
-## 自定义编辑风格
+## 自定义编辑风格（不写死，适配不同场景）
 
-标题前缀（默认 `【动态参考】`）、tags、分区（`category`）、描述模板都在 [`scripts/upload_one.py`](./scripts/upload_one.py) 里改。默认**不会**把视频加入任何合集。
+标题、描述、**B 站分区（category）**、**标签（tags）** 都**不固定**：
+
+- **默认**：由 agent 按视频内容 + 你当下的话临时决定（零配置）。比如你说"发到动画区、带上 #定格动画 标签"，它就照做。
+- **想给固定频道设默认**：把 [`config.example.json`](./config.example.json) 复制成 `config.json`，填好 `title_prefix` / `category` / `tags`，agent 会自动沿用（命令行临时指定仍可覆盖）。
+
+> 解析优先级：命令行参数 > `config.json` > 兜底。分区**不会**默默用一个写死值——没指定时脚本会要求你/agent 明确给出，避免投错区。默认也**不会**把视频加入任何合集。
 
 ---
 
@@ -106,6 +111,7 @@ https://www.instagram.com/reel/Cabc123dEfg/
 ig-link-bili-skill/
 ├── SKILL.md                       # agent 视角的完整工作流与规则
 ├── README.md                      # 本文件
+├── config.example.json            # 可选配置模板（复制为 config.json 设固定分区/标签/标题前缀）
 ├── scripts/
 │   ├── setup_cookies.py           # 从本机浏览器抓 B 站 cookie（多浏览器，自动验真）
 │   ├── prepare_media.sh           # 下载 mp4 + 截/拉封面 + 拉元数据
@@ -146,7 +152,7 @@ python3 scripts/setup_cookies.py                 # 先在浏览器登录 bilibil
 
 # 跑一条（shortcode 取自 instagram.com/reel/DYyvKNpEdoo/）
 ./scripts/prepare_media.sh DYyvKNpEdoo                                   # 下载 + 封面 + 元数据
-python3 ./scripts/upload_one.py DYyvKNpEdoo "<中文标题>" "<中文描述>" "<原作者>"   # 上传
+python3 ./scripts/upload_one.py DYyvKNpEdoo "<中文标题>" "<中文描述>" --category <TID> --tags 标签1,标签2   # 上传
 sleep 60 && python3 ./scripts/verify_upload.py <bvid>                    # 验真
 ```
 
