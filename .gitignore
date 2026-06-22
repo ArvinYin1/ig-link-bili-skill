@@ -1,0 +1,20 @@
+# === B 站凭证：绝不提交真 cookie（只提交 credentials.json.template）===
+bilibili_uploader/credentials.json
+.credentials.json
+credentials.json
+
+# === 下载的媒体（运行时产物，默认在 /tmp，但以防改了输出目录）===
+*.mp4
+*.mkv
+*.webm
+*.info.json
+*thumb.jpg
+
+# === Python ===
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# === 系统 ===
+.DS_Store

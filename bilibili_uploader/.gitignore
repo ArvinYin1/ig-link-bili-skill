@@ -1,0 +1,40 @@
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+.env
+credentials.json
+.credentials.json
+
+# Video files
+*.mp4
+*.mkv
+*.avi
+*.mov
+*.wmv
+*.flv
+*.webm
+*.m4v
+*.mpg
+*.mpeg
+*.3gp
+*.ts
+
+# Subtitle files
+*.srt
+subtitles/
+
+# Music/Audio files
+*.mp3
+*.wav
+*.flac
+*.aac
+*.ogg
+*.wma
+*.m4a
+*.aiff
+*.ape
+*.opus
