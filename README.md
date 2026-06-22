@@ -2,7 +2,7 @@
 
 > 把你给的 Instagram Reel 链接，自动下载、翻译、转载到 B 站。
 
-一个 Claude / agent **skill**。你只管把 IG 链接丢给 agent、说一句"转到 B 站"——**装依赖、刷 cookie、下载、翻译、上传、验真，全部由 agent 自动完成**。
+一个 **agent skill**（任何支持 skill 的 AI agent 都能用，不绑定特定平台）。你只管把 IG 链接丢给 agent、说一句"转到 B 站"——**装依赖、刷 cookie、下载、翻译、上传、验真，全部由 agent 自动完成**。
 
 > [!IMPORTANT]
 > ## 🧑 你只需亲自做这 2 件事
