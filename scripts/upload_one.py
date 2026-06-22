@@ -21,9 +21,9 @@ ig-link-bili: 单条 IG Reel → B 站上传 wrapper
   title_prefix 非空且标题没带它时，自动加在标题前（给固定频道用）。
 
 前置：
-  - <media_dir>/<shortcode>.mp4         (prepare_media.sh 下载好的视频)
+  - <media_dir>/<shortcode>.mp4         (prepare_media.py 下载好的视频)
   - <media_dir>/<shortcode>thumb.jpg    (封面；缺失则 B 站自动生成)
-    media_dir 默认 /tmp/ig_link_bili，可用环境变量 IG_MEDIA_DIR 改
+    media_dir 默认 = 系统临时目录/ig_link_bili，可用环境变量 IG_MEDIA_DIR 改
   - bilibili_uploader/credentials.json  (B 站 cookie，由 setup_cookies.py 生成)
 
 返回：
@@ -44,8 +44,9 @@ SKILL_DIR = SCRIPT_DIR.parent
 UPLOADER_DIR = SKILL_DIR / "bilibili_uploader"
 CONFIG_PATH = SKILL_DIR / "config.json"
 
-# 视频/封面路径
-MEDIA_DIR = Path(os.environ.get("IG_MEDIA_DIR", "/tmp/ig_link_bili"))
+# 视频/封面路径（跨平台：默认放系统临时目录，不写死 /tmp）
+DEFAULT_MEDIA_DIR = Path(tempfile.gettempdir()) / "ig_link_bili"
+MEDIA_DIR = Path(os.environ.get("IG_MEDIA_DIR") or DEFAULT_MEDIA_DIR)
 
 
 def load_config():
@@ -139,7 +140,7 @@ asyncio.run(main())
     # 写到临时 .py 文件
     with tempfile.NamedTemporaryFile(
         mode="w", suffix=".py", prefix="iglink_upload_",
-        dir="/tmp", delete=False,
+        delete=False,
     ) as f:
         f.write(helper_code)
         helper_path = f.name
@@ -149,7 +150,7 @@ asyncio.run(main())
         env["PYTHONPATH"] = f"{UPLOADER_DIR}:" + env.get("PYTHONPATH", "")
 
         proc = subprocess.run(
-            ["python3", helper_path],
+            [sys.executable, helper_path],
             capture_output=True,
             text=True,
             timeout=300,

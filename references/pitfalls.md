@@ -30,7 +30,7 @@
 
 `python3 -c "..."` 会被 `script execution via -e/-c flag` 拦截。
 
-**修法**：`upload_one.py` 内部把代码写到 `/tmp/iglink_upload_*.py` 临时文件再 `python3 <file>` 调。
+**修法**：`upload_one.py` 内部把代码写到**系统临时目录**的 `iglink_upload_*.py` 临时文件，再用当前 Python 解释器（`sys.executable`，跨平台）调。
 
 ## 4. ffmpeg 截封面 < 1s 视频
 
@@ -39,7 +39,7 @@
 **原因**：视频时长 < `-ss` 指定的秒数，ffmpeg 抽不到帧。
 
 **修法**：
-- `prepare_media.sh` 默认 `-ss 00:00:01`，对绝大多数 IG Reel OK
+- `prepare_media.py` 默认 `-ss 00:00:01`，对绝大多数 IG Reel OK
 - 极短视频（< 1s）跳过 cover，upload_one.py 检测到 cover 缺失会跳过，**B 站自动补默认封面**
 
 ## 5. yt-dlp 偶发网络超时
@@ -47,7 +47,7 @@
 **症状**：`Connection to www.instagram.com timed out`
 
 **修法**：
-- 第一次超时直接重试（`prepare_media.sh` 暂未加 retry，可手动重跑）
+- 第一次超时直接重试（`prepare_media.py` 暂未加 retry，可手动重跑）
 - VPN 不稳时常见
 
 ## 6. credentials.json 过期（症状表 + 怎么修）

@@ -16,7 +16,7 @@ https://www.instagram.com/reel/DX36S_8ByRb/    # nazmul.motion 4.1k
 
 ```bash
 # 1) 准备视频
-./scripts/prepare_media.sh DVT6MCWgroY
+python3 scripts/prepare_media.py DVT6MCWgroY
 
 # 2) 上传（标题/分区/标签按内容定——下面的标题前缀、分区、标签都只是示例值）
 python3 ./scripts/upload_one.py "DVT6MCWgroY" \

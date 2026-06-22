@@ -1,7 +1,7 @@
 ---
 name: IG link to Bili
 description: 把 Instagram Reel 链接（用户提供）下载、翻译、转载到 B 站。**不做** IG feed/hashtag 自动抓取、**不做**点赞阈值筛选、**不做**去重、**不做**作者黑名单——链接都是用户主动给的，过滤掉反而是 surprise。当用户提供 instagram.com/reel/<code>/ 或 /p/<code>/ 链接并希望转载/搬运/上传到 B 站时激活。
-version: 1.5.0
+version: 1.6.0
 author: Taozi (Arvin Yin)
 tags: [instagram, bilibili, motion-design, video, repost, single-link]
 ---
@@ -39,11 +39,12 @@ tags: [instagram, bilibili, motion-design, video, repost, single-link]
 |---|---|---|
 | Python 3.8+ | 跑上传脚本 | 系统已带 |
 | `httpx aiohttp beautifulsoup4 lxml requests` | B 站 API client | `pip install -r bilibili_uploader/requirements.txt` |
-| `yt-dlp` | 公开下载 IG Reel（无需 IG 账号） | `brew install yt-dlp` 或 `pip install yt-dlp` |
-| `ffmpeg` | 截视频第 1 秒做封面 | `brew install ffmpeg` |
-| `browser_cookie3` | 从浏览器拉 B 站 cookie（首次必跑） | `pip install browser_cookie3` |
+| `yt-dlp` | 公开下载 IG Reel（无需 IG 账号） | `pip install yt-dlp`（任意系统都行） |
+| `ffmpeg` | 截视频第 1 秒做封面（可选，缺了 B 站自动封面） | mac `brew install ffmpeg`／Linux `apt install ffmpeg`／Win `winget install Gyan.FFmpeg` |
+| `browser_cookie3` | 从浏览器拉 B 站 cookie（首次必跑） | `pip install browser_cookie3`；**Windows 还需 `pip install pywin32`** |
 | B 站 cookie | **分发包里 credentials.json 是占位模板**，首次使用前必须自己刷 | `python3 scripts/setup_cookies.py`（自动探测浏览器；支持 chrome/edge/brave/arc/vivaldi/firefox/safari 等，不限 Chrome） |
 
+**跨平台**：mac / Windows / Linux 通用。命令里的 `python3` 在 Windows 上换成 `python`。
 **无 WebBridge 也能跑**——caption 通过 `yt-dlp --write-info-json` 拿（fallback）。
 
 ---
@@ -55,7 +56,7 @@ tags: [instagram, bilibili, motion-design, video, repost, single-link]
 1. **解析 shortcode**——从 URL 抽 `reel/DYyvKNpEdoo/` 的 `DYyvKNpEdoo`
 2. **下载 + 元数据**：
    ```bash
-   ./scripts/prepare_media.sh <shortcode> [/tmp/ig_link_bili]
+   python3 scripts/prepare_media.py <shortcode> [media_dir]   # Windows: python scripts\prepare_media.py
    ```
    → 产出 `<shortcode>.mp4` + `<shortcode>.info.json`（含 uploader/like_count/description）+ `<shortcode>thumb.jpg`
 3. **生成标题/描述/分区/标签**（agent 脑内，按内容 + 用户意图，不写死）：
@@ -91,7 +92,7 @@ ig-link-bili/
 ├── config.example.json           ← 可选配置模板（复制为 config.json 设固定的分区/标签/标题前缀）
 ├── scripts/
 │   ├── setup_cookies.py          ← 首次必跑：从本机浏览器抓 B 站 cookie 写入 credentials.json（支持多浏览器，自动验真）
-│   ├── prepare_media.sh          ← 一步：下载 mp4 + 截封面 + 拉元数据 JSON
+│   ├── prepare_media.py          ← 一步：下载 mp4 + 截封面 + 拉元数据 JSON
 │   ├── upload_one.py             ← 单条上传 wrapper（分区/标签走参数或 config.json，不写死）
 │   └── verify_upload.py          ← B 站 API 验真（带重试）
 ├── bilibili_uploader/            ← 自包含 B 站上传库（拷自 wscats/bilibili-all-in-one）
@@ -128,7 +129,7 @@ ig-link-bili/
 
 ### 封面策略：yt-dlp 拉 IG 官方封面 → ffmpeg 截帧兜底（2026-06-07 修订）
 
-`prepare_media.sh` 的封面逻辑是**双保险**：
+`prepare_media.py` 的封面逻辑是**双保险**：
 1. **优先**：`yt-dlp --write-thumbnail --convert-thumbnails jpg` 拉 IG 官方封面（CDN 单独资源，**经常是设计过的宣传图**）
 2. **失败兜底**：`ffmpeg -ss 00:00:01 -vframes 1` 从 mp4 截第 1 秒帧
 
@@ -193,7 +194,7 @@ curl -sS -m 10 "https://api.bilibili.com/x/web-interface/nav" -b "SESSDATA=$SESS
 |---|---|
 | `yt-dlp` 报 HTTP 4xx/5xx | VPN/网络问题，确认能访问 instagram.com |
 | `yt-dlp` 报 "Sign in to view" | 该 Reel 是非公开的，换链接 |
-| `upload_one.py` 返 "video not found" | 没跑 `prepare_media.sh`，或 shortcode 拼错 |
+| `upload_one.py` 返 "video not found" | 没跑 `prepare_media.py`，或 shortcode 拼错 |
 | `upload_one.py` 返 "cookie expired" | `bilibili_uploader/credentials.json` 需要更新——在 Chrome 登录 B 站后用 `browser_cookie3` **三件套一起**提取。详见 `references/pitfalls.md` §6 §8 |
 | `verify_upload.py` 返 PENDING | 正常，等 1-2 分钟再 retry |
 | `verify_upload.py` 返 FAIL 多次 | B 站可能真把这条拒收了（站内外重复 / 版权）——别再传，告知用户 |
